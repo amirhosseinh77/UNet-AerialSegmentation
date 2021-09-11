@@ -35,63 +35,37 @@ class FocalLoss(nn.Module):
         else: return loss.sum()
 
 
-class IoULoss(nn.Module):
-    def __init__(self, eps=1e-6):
-        super(IoULoss, self).__init__()
-        self.eps = eps
-
-    def forward(self, outputs: torch.Tensor, labels: torch.Tensor):
-        return 1 - iou_pytorch(outputs, labels)
-
-SMOOTH = 1e-6
-
-def iou_pytorch(outputs: torch.Tensor, labels: torch.Tensor):
-    # You can comment out this line if you are passing tensors of equal shape
-    # But if you are passing output from UNet or something it will most probably
-    # be with the BATCH x 1 x H x W shape
-    outputs = outputs.squeeze(1)  # BATCH x 1 x H x W => BATCH x H x W
-    
-    intersection = (outputs & labels).float().sum((1, 2))  # Will be zero if Truth=0 or Prediction=0
-    union = (outputs | labels).float().sum((1, 2))         # Will be zzero if both are 0
-    
-    iou = (intersection + SMOOTH) / (union + SMOOTH)  # We smooth our devision to avoid 0/0
-    
-    thresholded = torch.clamp(20 * (iou - 0.5), 0, 10).ceil() / 10  # This is equal to comparing with thresolds
-    
-    return thresholded  # Or thresholded.mean() if you are interested in average across the batch
-
-
-def to_one_hot(tensor,nClasses):
-    
-    n,h,w = tensor.size()
-    one_hot = torch.zeros(n,nClasses,h,w).scatter_(1,tensor.view(n,1,h,w),1)
-    return one_hot
-
 class mIoULoss(nn.Module):
     def __init__(self, weight=None, size_average=True, n_classes=2):
         super(mIoULoss, self).__init__()
         self.classes = n_classes
 
-    def forward(self, inputs, target_oneHot):
-    	# inputs => N x Classes x H x W
-    	# target_oneHot => N x Classes x H x W
+    def to_one_hot(self, tensor):
+        n,h,w = tensor.size()
+        one_hot = torch.zeros(n,self.classes,h,w).to(tensor.device).scatter_(1,tensor.view(n,1,h,w),1)
+        return one_hot
 
-    	N = inputs.size()[0]
+    def forward(self, inputs, target):
+        # inputs => N x Classes x H x W
+        # target_oneHot => N x Classes x H x W
 
-    	# predicted probabilities for each pixel along channel
-    	inputs = F.softmax(inputs,dim=1)
-    	
-    	# Numerator Product
-    	inter = inputs * target_oneHot
-    	## Sum over all pixels N x C x H x W => N x C
-    	inter = inter.view(N,self.classes,-1).sum(2)
+        N = inputs.size()[0]
 
-    	#Denominator 
-    	union= inputs + target_oneHot - (inputs*target_oneHot)
-    	## Sum over all pixels N x C x H x W => N x C
-    	union = union.view(N,self.classes,-1).sum(2)
+        # predicted probabilities for each pixel along channel
+        inputs = F.softmax(inputs,dim=1)
+        
+        # Numerator Product
+        target_oneHot = self.to_one_hot(target)
+        inter = inputs * target_oneHot
+        ## Sum over all pixels N x C x H x W => N x C
+        inter = inter.view(N,self.classes,-1).sum(2)
 
-    	loss = inter/union
+        #Denominator 
+        union= inputs + target_oneHot - (inputs*target_oneHot)
+        ## Sum over all pixels N x C x H x W => N x C
+        union = union.view(N,self.classes,-1).sum(2)
 
-    	## Return average loss over classes and batch
-    	return loss.mean()
+        loss = inter/union
+
+        ## Return average loss over classes and batch
+        return 1-loss.mean()
