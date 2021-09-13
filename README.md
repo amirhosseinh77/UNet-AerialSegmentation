@@ -14,5 +14,5 @@ Unet-FocalLoss
 
 ```
 
-![download](https://user-images.githubusercontent.com/56114938/133053776-04e5793a-7dd6-4ca6-a964-129314be0f28.png)
+![dataset_sample1](https://user-images.githubusercontent.com/56114938/133141953-46df55be-4dfb-4084-b8d0-a63a56712ab0.png)
 
