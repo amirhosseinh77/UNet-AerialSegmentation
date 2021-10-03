@@ -5,12 +5,12 @@
 [Kaggle Dataset](https://www.kaggle.com/humansintheloop/semantic-segmentation-of-aerial-imagery)
 
 ```
-Unet-FocalLoss
-      ├── data.py
-      ├── losses.py
-      ├── model.py
-      ├── train.py
-      └── inference.py
+UNet-AerialSegmentation
+       		   ├── data.py
+       		   ├── losses.py
+      		   ├── model.py
+      		   ├── train.py
+       		   └── inference.py
 
 ```
 

@@ -5,12 +5,13 @@ import torch.utils.data
 import torchvision.transforms as transforms
 import PIL
 import random
-
+from scipy import ndimage
 
 class segDataset(torch.utils.data.Dataset):
-    def __init__(self, root,  transform=None):
+    def __init__(self, root, training, transform=None):
         super(segDataset, self).__init__()
         self.root = root
+        self.training = training
         self.transform = transform
         self.IMG_NAMES = sorted(glob(self.root + '/*/images/*.jpg'))
         self.BGR_classes = {'Water' : [ 41, 169, 226],
@@ -27,10 +28,7 @@ class segDataset(torch.utils.data.Dataset):
         img_path = self.IMG_NAMES[idx]
         mask_path = img_path.replace('images', 'masks').replace('.jpg', '.png')
 
-        image = PIL.Image.open(img_path)
-        if self.transform:
-            image = self.transform(image)
-
+        image = cv2.imread(img_path)
         mask = cv2.imread(mask_path)
         cls_mask = np.zeros(mask.shape)  
         cls_mask[mask == self.BGR_classes['Water']] = self.bin_classes.index('Water')
@@ -41,11 +39,31 @@ class segDataset(torch.utils.data.Dataset):
         cls_mask[mask == self.BGR_classes['Unlabeled']] = self.bin_classes.index('Unlabeled')
         cls_mask = cls_mask[:,:,0] 
 
-        image = np.array(image)                                 #rotation of image
+        if self.training==True:
+            if self.transform:
+              image = transforms.functional.to_pil_image(image)
+              image = self.transform(image)
+              image = np.array(image)
+
+            # 90 degree rotation
+            if np.random.rand()<0.5:
+              angle = np.random.randint(4) * 90
+              image = ndimage.rotate(image,angle,reshape=True)
+              cls_mask = ndimage.rotate(cls_mask,angle,reshape=True)
+
+            # vertical flip
+            if np.random.rand()<0.5:
+              image = np.flip(image, 0)
+              cls_mask = np.flip(cls_mask, 0)
+            
+            # horizonal flip
+            if np.random.rand()<0.5:
+              image = np.flip(image, 1)
+              cls_mask = np.flip(cls_mask, 1)
+
         image = cv2.resize(image, (512,512))/255.0
-        image = np.moveaxis(image, -1, 0)
         cls_mask = cv2.resize(cls_mask, (512,512)) 
-        
+        image = np.moveaxis(image, -1, 0)
 
         return torch.tensor(image).float(), torch.tensor(cls_mask, dtype=torch.int64)
 
