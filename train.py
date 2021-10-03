@@ -14,18 +14,16 @@ import argparse
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-
-parser = argparse.ArgumentParser()
-parser.add_argument('--data', type=str, default='my_dataset', help='path to your dataset')
-parser.add_argument('--num_classes', type=int, default=11, help='number of your classes including background')
-parser.add_argument('--num_epochs', type=int, default=150, help='dnumber of epochs')
-
+def get_orgs():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--data', type=str, default='my_dataset', help='path to your dataset')
+    parser.add_argument('--batch', type=int, default=4, help='batch size')
+    parser.add_argument('--num_classes', type=int, default=6, help='number of your classes including background')
+    parser.add_argument('--num_epochs', type=int, default=100, help='dnumber of epochs')
+    return parser.parse_args()
 
 if __name__ == '__main__':
-
-    args = parser.parse_args()
-
-    print('args :', args.data)
+    args = get_args()
     # print('data : 'args.data)
 
     color_shift = transforms.ColorJitter(.1,.1,.1,.1)
