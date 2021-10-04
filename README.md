@@ -1,5 +1,5 @@
 # U-Net for Semantic Segmentation on Unbalanced Aerial Imagery
-## Note: this repository is still developing but the colab notebook is complete for training and evaluations.
+##### Note: this repository is still developing but the colab notebook is complete for training and evaluations.
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1vYZYXDMfs9hK6KvXY3v1iTPiln9OeJZE?usp=sharing)
 
 [Kaggle Dataset](https://www.kaggle.com/humansintheloop/semantic-segmentation-of-aerial-imagery)
