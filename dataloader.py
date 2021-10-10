@@ -1,11 +1,10 @@
-import os
+import cv2
 import numpy as np
 import torch
-import torch.utils.data
 import torchvision.transforms as transforms
-import PIL
-import random
 from scipy import ndimage
+from glob import glob
+
 
 class segDataset(torch.utils.data.Dataset):
     def __init__(self, root, training, transform=None):
