@@ -21,6 +21,10 @@ def get_args():
     parser.add_argument('--loss', type=str, default='focalloss', help='focalloss | iouloss | crossentropy')
     return parser.parse_args()
 
+def acc(label, predicted):
+    seg_acc = (y.cpu() == torch.argmax(pred_mask, axis=1).cpu()).sum() / torch.numel(y.cpu())
+    return seg_acc
+
 if __name__ == '__main__':
     args = get_args()
     N_EPOCHS = args.num_epochs
@@ -63,57 +67,62 @@ if __name__ == '__main__':
     scheduler_counter = 0
 
     for epoch in range(N_EPOCHS):
-        # training
-        model.train()
-        loss_list = []
-        for batch_i, (x, y) in enumerate(train_dataloader):
+    # training
+    model.train()
+    loss_list = []
+    acc_list = []
+    for batch_i, (x, y) in enumerate(train_dataloader):
 
-            pred_mask = model(x.to(device))  
-            loss = criterion(pred_mask, y.to(device))
+        pred_mask = model(x.to(device))  
+        loss = criterion(pred_mask, y.to(device))
 
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
-            loss_list.append(loss.cpu().detach().numpy())
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+        loss_list.append(loss.cpu().detach().numpy())
+        acc_list.append(acc(y,pred_mask).numpy())
 
-            sys.stdout.write(
-                "\r[Epoch %d/%d] [Batch %d/%d] [Loss: %f (%f)]"
-                % (
-                    epoch,
-                    N_EPOCHS,
-                    batch_i,
-                    len(train_dataloader),
-                    loss.cpu().detach().numpy(),
-                    np.mean(loss_list),
-                )
+        sys.stdout.write(
+            "\r[Epoch %d/%d] [Batch %d/%d] [Loss: %f (%f)]"
+            % (
+                epoch,
+                N_EPOCHS,
+                batch_i,
+                len(train_dataloader),
+                loss.cpu().detach().numpy(),
+                np.mean(loss_list),
             )
-        scheduler_counter += 1
-        # testing
-        model.eval()
-        val_loss_list = []
-        for batch_i, (x, y) in enumerate(test_dataloader):
-            with torch.no_grad():    
-                pred_mask = model(x.to(device))  
-            val_loss = criterion(pred_mask, y.to(device))
-
-            val_loss_list.append(val_loss.cpu().detach().numpy())
-            
-        print(' epoch {} - loss : {:.5f} - val loss : {:.5f}'.format(epoch, 
-                                                            np.mean(loss_list), 
-                                                            np.mean(val_loss_list)))
-        plot_losses.append([epoch, np.mean(loss_list), np.mean(val_loss_list)])
-
-        compare_loss = np.mean(val_loss_list)
-        is_best = compare_loss < min_loss
-        if is_best == True:
-            scheduler_counter = 0
-            min_loss = min(compare_loss, min_loss)
-            torch.save(model.state_dict(), './saved_models/unet_epoch_{}_{:.5f}.pt'.format(epoch,np.mean(val_loss_list)))
+        )
+    scheduler_counter += 1
+    # testing
+    model.eval()
+    val_loss_list = []
+    val_acc_list = []
+    for batch_i, (x, y) in enumerate(test_dataloader):
+        with torch.no_grad():    
+            pred_mask = model(x.to(device))  
+        val_loss = criterion(pred_mask, y.to(device))
+        val_loss_list.append(val_loss.cpu().detach().numpy())
+        val_acc_list.append(acc(y,pred_mask).numpy())
         
-        if scheduler_counter > 5:
-            lr_scheduler.step()
-            print(f"lowering learning rate to {optimizer.param_groups[0]['lr']}")
-            scheduler_counter = 0
+    print(' epoch {} - loss : {:.5f} - acc : {:.2f} - val loss : {:.5f} - val acc : {:.2f}'.format(epoch, 
+                                                                                                    np.mean(loss_list), 
+                                                                                                    np.mean(acc_list), 
+                                                                                                    np.mean(val_loss_list),
+                                                                                                    np.mean(val_acc_list)))
+    plot_losses.append([epoch, np.mean(loss_list), np.mean(val_loss_list)])
+
+    compare_loss = np.mean(val_loss_list)
+    is_best = compare_loss < min_loss
+    if is_best == True:
+        scheduler_counter = 0
+        min_loss = min(compare_loss, min_loss)
+        torch.save(model.state_dict(), './saved_models/unet_epoch_{}_{:.5f}.pt'.format(epoch,np.mean(val_loss_list)))
+    
+    if scheduler_counter > 5:
+        lr_scheduler.step()
+        print(f"lowering learning rate to {optimizer.param_groups[0]['lr']}")
+        scheduler_counter = 0
 
 
     # plot loss
